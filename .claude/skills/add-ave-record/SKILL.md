@@ -53,10 +53,55 @@ against a different set of factors than what got written down.
 
 ### 7. Publish
 A record passing validation is not yet a published one. Update:
-- dist/ave-records-latest.json — add or replace this record's entry,
+
+- **dist/ave-records-latest.json**: add or replace this record's entry,
   keeping the array sorted by ave_id.
-- CHANGELOG.md — one line under Unreleased/Added: the ave_id, title,
+- **CHANGELOG.md**: one line under Unreleased/Added: the ave_id, title,
   severity, and aivss_score.
+- **README.md, three separate things, don't assume any of them share a
+  format**:
+
+  1. **Prose record count.** Find it first:
+     ```bash
+     grep -n "[0-9]\+ records\|[0-9]\+ behavioral class" README.md
+     ```
+     Update to the real count from `ls records/AVE-*.json | wc -l`, not by
+     incrementing the old number, more than one record can land in a
+     single batch.
+
+  2. **A record-count badge**, if one exists. Badges are usually
+     shields.io-style, with the count embedded as a URL path segment, not
+     free prose, so the prose grep above won't reliably catch it. Find it
+     separately:
+     ```bash
+     grep -n "shields.io\|badge.*record\|records.*badge" README.md
+     ```
+     If found, the count sits inside the badge URL itself (something like
+     `.../badge/records-59-blue`), update that specific segment to the
+     real count, don't touch the rest of the badge's color, label text, or
+     link target.
+
+  3. **A list or table enumerating individual records**, if one exists.
+     This is not a number to update, it needs a new row appended for
+     whatever record just landed, matching the exact column structure and
+     formatting of the existing rows exactly, so it doesn't stand out as
+     the one inconsistently-formatted entry. Find it first:
+     ```bash
+     grep -n "AVE-2026-" README.md
+     ```
+     If this is a comprehensive, actively-maintained list, append the new
+     record's row after whatever the file's own existing ordering
+     convention is (chronological, by ID, by severity, confirm which
+     before assuming). If it's a curated set of examples rather than a
+     complete enumeration (a handful of illustrative records, not all of
+     them), don't add to it automatically, that's an editorial decision
+     about which records are worth featuring, not a mechanical update; ask
+     before changing this one.
+
+  For all three: if the grep for any of them finds nothing, that specific
+  piece doesn't exist in README.md, skip it, don't invent one. If any grep
+  finds something whose format doesn't match what's described above, stop
+  and ask rather than force an edit that might not fit.
 
 Do not bump schema_version or create a new versioned dist snapshot
 (dist/ave-records-vX.Y.Z.json) as part of this step. That's a separate,
@@ -73,7 +118,7 @@ LOW      → < 4.0
 If severity and aivss_score disagree, the record fails validation.
 
 A mechanism that reads as severe in plain English can still land MEDIUM,
-correctly, if it's narrow and single-vector — AARF's ten factors reward
+correctly, if it's narrow and single-vector, AARF's ten factors reward
 breadth of amplification, not just raw impact. cvss_base alone carries
 the severity of the underlying impact. Don't inflate AARF factors to
 force a record into a more severe-sounding band; if the honestly computed
@@ -91,11 +136,11 @@ The scanner adjusts from this baseline via the FP pipeline.
 
 ## Reference files
 
-- references/aivss-scoring.md — the AARF formula, how aars is computed
+- references/aivss-scoring.md: the AARF formula, how aars is computed
   from the ten factors, and worked examples spanning MEDIUM through HIGH,
   including the specific trap of inflating factors to chase a severity
   band.
-- references/schema-fields.md — the provenance_vector.entry_class enum
+- references/schema-fields.md: the provenance_vector.entry_class enum
   (confirmed live against the corpus) and escalation values, distinct
   from grill-with-docs Q7's detection_layer, a coarser, separate field;
   don't conflate the two when writing provenance_vector.
