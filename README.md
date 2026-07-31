@@ -63,7 +63,7 @@ AVE + Bawbel fixes that.
 ```
 
 <p align="center">
-  <img src="docs/images/ave-gap-diagram.svg" alt="Two independent scanners flag the same behavioral pattern under different names, with no shared identifier; AVE fills that gap" width="640" />
+  <img src="docs/images/ave-gap-diagram.svg" alt="Two independent scanners flag the same behavioral pattern under different names, with no shared identifier; AVE fills that gap" width="100%" />
 </p>
 
 ---
