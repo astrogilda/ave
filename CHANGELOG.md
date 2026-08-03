@@ -9,6 +9,11 @@ Format: [Semantic Versioning](https://semver.org). Schema versions and record se
 ## [Unreleased]
 
 ### Added
+- AVE-2026-00067: skill composition trust transfer (SCR-TrustLift) — a
+  downstream skill accepts an upstream skill's benign output (an
+  endorsement, audit finding, validation result) as sufficient
+  authorization without independently re-verifying the claim; neither
+  skill is dangerous in isolation (MEDIUM, AIVSS 5.0)
 - AVE-2026-00066: hallucinated skill-name squatting (HalluSquatting) —
   agent hallucinates a plausible-but-nonexistent package/repo/skill
   name, attacker pre-registers it with malicious content, no injected
