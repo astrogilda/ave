@@ -9,6 +9,11 @@ Format: [Semantic Versioning](https://semver.org). Schema versions and record se
 ## [Unreleased]
 
 ### Added
+- AVE-2026-00069: multimodal image-hidden instructions (SkillCamo) —
+  malicious instructions concealed in an image bundled with a skill
+  package, invisible to text-only scanners, recovered by a multimodal
+  agent at deployment; distinct from user-supplied image injection at
+  chat time (MEDIUM, AIVSS 4.8)
 - AVE-2026-00068: CLI command composition risk (MOSAIC) — individually
   benign CLI commands compose through shared OS/shell state (env vars,
   file descriptors, working directory, temp files) into an
