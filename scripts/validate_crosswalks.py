@@ -13,7 +13,11 @@
 # How:  jsonschema.Draft202012Validator with format checking enabled, so the date and
 #       uri formats in the schema are enforced rather than annotated, over every
 #       crosswalks/*.json; then a set membership test of every cited id against the
-#       ave_id values in records/
+#       ave_id values in records/. jsonschema implements the date checker itself but
+#       registers uri only when rfc3986-validator is installed, so that package is a
+#       dev dependency here; without it "format": "uri" parses and then constrains
+#       nothing, and the ^https?:// pattern beside it is the only thing refusing a
+#       bad url.
 import json
 import sys
 from pathlib import Path

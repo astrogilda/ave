@@ -68,7 +68,8 @@
         "type": [
           "integer",
           "string"
-        ]
+        ],
+        "minimum": 0
       }
     }
   },
