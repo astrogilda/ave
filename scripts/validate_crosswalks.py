@@ -50,14 +50,6 @@ REPOSITORY_HOSTS = {
     "sr.ht", "git.sr.ht",
 }
 
-# commit is optional in crosswalk 1.0.x, so a stated record count with no pin and no
-# unpinnable declaration is a warning here and not a failure: some crosswalks in the
-# tree genuinely cannot be backfilled cleanly yet. It becomes a failure when commit is
-# promoted to required at the next major, which makes the enforcement timeline track
-# the field's own promotion rather than a date somebody has to remember. Flipping this
-# constant is that escalation, and it belongs in the same change as the promotion.
-UNPINNED_COUNT_IS_FATAL = False
-
 PROBE_TIMEOUT_SECONDS = 20
 
 
@@ -90,6 +82,33 @@ def cited_ave_ids(node: object) -> set[str]:
         for item in node:
             found |= cited_ave_ids(item)
     return found
+
+
+def commit_is_required(schema: dict) -> bool:
+    """Whether the schema has promoted commit from optional to required.
+
+    This is the escalation switch for the record-count check below, and it is
+    read off the schema rather than held in a constant or a date: while commit
+    is optional a stated count with no pin is a warning, and on the day commit
+    appears in a required list in the endpoint definition the same finding
+    becomes a failure. Nobody has to remember to flip anything, and the
+    enforcement cannot arrive early or late, because there is only one fact and
+    both the schema and the validator read it from the same place.
+
+    A required list underneath `not` is the opposite claim, and 1.0.x contains
+    one: a declared-unpinnable endpoint must *not* carry commit. Those subtrees
+    are skipped, or forbidding the field would read as requiring it.
+    """
+    def promoted(node: object) -> bool:
+        if isinstance(node, list):
+            return any(promoted(item) for item in node)
+        if not isinstance(node, dict):
+            return False
+        if "commit" in node.get("required", []):
+            return True
+        return any(promoted(value) for key, value in node.items() if key != "not")
+
+    return promoted(schema.get("$defs", {}).get("endpoint", {}))
 
 
 def build_validator(schema: dict) -> jsonschema.Draft202012Validator:
@@ -204,7 +223,8 @@ def warn_stated_count_without_pin(document: dict) -> list[str]:
     re-derived by a reader: the corpus keeps moving, and a date does not
     identify a tree. That is the staleness this field exists to fix, but the
     check cannot hard-fail until commit is required, or it would go red on
-    files already in the repository. See UNPINNED_COUNT_IS_FATAL.
+    files already in the repository. See commit_is_required, which is what
+    decides whether the caller reports this as a warning or as a failure.
     """
     return [f"{side} states record_count {endpoint['record_count']} but carries no "
             f"commit and does not declare pin_status unpinnable, so the count "
@@ -228,6 +248,7 @@ def main() -> int:
 
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     validator = build_validator(schema)
+    unpinned_count_is_fatal = commit_is_required(schema)
     published = known_ave_ids()
 
     paths = sorted(CROSSWALKS_DIR.glob("*.json"))
@@ -249,7 +270,7 @@ def main() -> int:
             problems += probe_problems
 
         warnings = warn_stated_count_without_pin(document)
-        if UNPINNED_COUNT_IS_FATAL:
+        if unpinned_count_is_fatal:
             problems += warnings
             warnings = []
 

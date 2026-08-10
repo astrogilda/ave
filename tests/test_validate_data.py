@@ -146,8 +146,85 @@ def test_a_stated_record_count_is_not_warned_about_when_declared_unpinnable():
     assert validate_crosswalks.warn_stated_count_without_pin(document) == []
 
 
-def test_the_unpinned_count_check_is_a_warning_until_commit_is_required():
-    """The escalation agreed in #94: warn while commit is optional, hard-fail when
-    it is promoted at the next major. The constant is the switch, so this asserts
-    which side of the promotion the repository is on, not a preference."""
-    assert validate_crosswalks.UNPINNED_COUNT_IS_FATAL is False
+def crosswalk_schema() -> dict:
+    return json.loads(validate_crosswalks.SCHEMA_PATH.read_text(encoding="utf-8"))
+
+
+def test_the_unpinned_count_check_is_a_warning_while_commit_is_optional():
+    """The escalation agreed in #94: warn while commit is optional, hard-fail once
+    it is promoted. This asserts which side of the promotion the shipped schema is
+    on, not a preference -- commit is optional in 1.0.x, so the check warns."""
+    assert validate_crosswalks.commit_is_required(crosswalk_schema()) is False
+
+
+def test_promoting_commit_to_required_escalates_the_check_with_no_code_change():
+    """The other side of the same switch. Requiring commit in the endpoint
+    definition is the whole of the escalation: no constant is flipped, no date is
+    read, and the validator cannot start failing before the field is promoted or
+    keep warning after it."""
+    schema = crosswalk_schema()
+    schema["$defs"]["endpoint"]["required"] = ["url", "commit"]
+
+    assert validate_crosswalks.commit_is_required(schema) is True
+
+
+def unpinned_count_tree(tmp_path, schema: dict) -> None:
+    """A whole repository in miniature: the given schema, one record, and one
+    crosswalk stating a count that nothing pins. Enough for main() to run against,
+    since it reads schema/, records/ and crosswalks/ relative to the directory it
+    is invoked from."""
+    (tmp_path / "schema").mkdir()
+    (tmp_path / "schema" / "crosswalk-1.0.0.schema.json").write_text(
+        json.dumps(schema), encoding="utf-8")
+    (tmp_path / "records").mkdir()
+    (tmp_path / "records" / "AVE-2026-00001.json").write_text(
+        json.dumps({"ave_id": "AVE-2026-00001"}), encoding="utf-8")
+    (tmp_path / "crosswalks").mkdir()
+    (tmp_path / "crosswalks" / "unpinned.json").write_text(
+        json.dumps(crosswalk_document({"url": "https://aveproject.org",
+                                       "record_count": 77})), encoding="utf-8")
+
+
+def test_an_unpinned_count_warns_and_exits_zero_while_commit_is_optional(
+        tmp_path, monkeypatch, capsys):
+    unpinned_count_tree(tmp_path, crosswalk_schema())
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", ["validate_crosswalks.py"])
+
+    exit_code = validate_crosswalks.main()
+
+    assert exit_code == 0
+    assert "WARNING" in capsys.readouterr().out
+
+
+def test_an_unpinned_count_fails_once_the_schema_promotes_commit(
+        tmp_path, monkeypatch, capsys):
+    """The escalation, end to end and through main() rather than through the
+    predicate alone: the only thing that changed is the schema, and the same
+    finding that was printed as a warning above is now reported as a failure.
+
+    The exit code alone cannot show this, because a schema that requires commit
+    refuses the file on its own account too, so what is asserted is that the
+    unpinned-count finding has stopped being a warning."""
+    schema = crosswalk_schema()
+    schema["$defs"]["endpoint"]["required"] = ["url", "commit"]
+    unpinned_count_tree(tmp_path, schema)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", ["validate_crosswalks.py"])
+
+    exit_code = validate_crosswalks.main()
+
+    out = capsys.readouterr().out
+    assert exit_code == 1
+    assert "cannot be re-derived" in out
+    assert "WARNING" not in out
+
+
+def test_forbidding_commit_on_an_unpinnable_side_does_not_read_as_promoting_it():
+    """1.0.x already contains a required list naming commit, underneath a `not`,
+    to keep a declared-unpinnable endpoint from also carrying a pin. Reading that
+    as the promotion would hard-fail the whole repository the day this landed."""
+    schema = crosswalk_schema()
+
+    assert "commit" in json.dumps(schema["$defs"]["endpoint"]["then"]["not"])
+    assert validate_crosswalks.commit_is_required(schema) is False
