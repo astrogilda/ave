@@ -76,7 +76,7 @@ def test_schema_accepts_a_declared_unpinnable_endpoint():
     assert validate_crosswalks.check_schema(document, crosswalk_validator()) == []
 
 
-@pytest.mark.parametrize("dropped", ["unpinnable_reason", "checked_against_live_site"])
+@pytest.mark.parametrize("dropped", ["unpinnable_reason", "checked_against_live_site", "content_digest"])
 def test_schema_rejects_an_unpinnable_declaration_missing_its_evidence(dropped):
     endpoint = dict(UNPINNABLE_SITE)
     del endpoint[dropped]
